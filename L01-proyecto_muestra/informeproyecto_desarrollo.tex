@@ -1,0 +1,1121 @@
+%documento con el cuerpo del informe.
+%puede ser un solo archivo o varios, por ejemplo uno por cada capítulo
+%- capítulo ---------------------------------------------------------
+\chapter{Introducción} \label{sec:L01}
+%%%%%%%%%%%%%%%%%%%%%%
+%\section{Justificación}
+
+\section{Alcance del proyecto}
+El Arcoslab (Autonomous Robots and Cognitive Systems Laboratory) cuenta con una cortadora láser "Laser Spectrum H-Series 20x12 5th Gen " , la cortadora cuenta con dos modos de operación: cortado rasterizado y cortado vectorial.
+El cortado vectorial es utilizado en el Arcoslab para la confección de PCB (tarjetas de circuito impreso, para los diversos proyectos del laboratorio. El software existente para el control de la cortadora láser presenta ciertos inconvenientes: 
+
+\begin{enumerate}
+	\item El software es propietario por lo que no puede ser modificado para adecuarse a las necesidades del laboratorio.
+	\item El software funciona exclusivamente con el  sistema operativo Microsoft Windows lo que obliga al laboratorio a hacer uso de máquinas virtuales con este sistema operativo; puesto que las computadoras del laboratorio utilizan la distribución Debian del sistema operativo GNU/Linux.
+\end{enumerate}
+
+Por estos motivos en este proyecto se plantea el diseño y puesta en funcionamiento de un software capaz de realizar las tareas de control necesarias para dar soporte de cortado vectorizado en el sistema operativo Linux a la cortadora láser del laboratorio además de generar toda la documentación necesaria para que dicho software pueda ser modificado en el futuro.
+
+\section{Objetivos}
+
+\subsection{Objetivo general}
+Diseñar e implementar un programa de aplicación para el control de la cortadora láser "Laser Spectrum H-Series 20x12 5th Gen " del Arcoslab que tome un archivo PDF y lo transforme en comandos de corte.
+
+\subsection{Objetivos específicos}
+Para el desarrollo de este proyecto se establecieron los siguientes objetivos:
+\begin{itemize} % lista con viñetas
+        \item Investigar y documentar el protocolo de comunicación de la cortadora láser.
+        \item Diseñar el software de cortado, un ejecutor de estructuras de datos hacia la cortadora, un parser de PDF a estructura de datos vectoriales, un extractor de datos del PDF y una interfaz gráfica de usuario.
+        \item Realizar la programación e implementación de los programas anteriores.
+        \item Realizar pruebas de funcionamiento.
+        \item Escribir un manual de instrucciones y un tutorial para los programas desarrollados.
+\end{itemize}
+
+\section{Metodología}
+El desarrollo del trabajo incluyó los siguientes pasos y procedimientos, listados en secuencia:
+
+\begin{enumerate}  %lista numerada
+        \item Investigación bibliográfica sobre el principio de funcionamiento de las maquinas CNC, en especial de las cortadoras láser y máquinas de prototipado de PCB.
+        \item Investigación bibliográfica acerca de los algoritmos, definiciones y estándares fijados para la renderización de archivos PDF, además de terminología general utilizada en Gráficos Por Computadora.
+        \item Investigación bibliográfica sobre el protocolo de comunicación utilizado por la cortadora láser Full Spectrum Laser 5th Gen. 
+        \item Diseño de las distintas estructuras de datos y algoritmos necesarios para la elaboración de los de los distintos programas de aplicación.
+        \item Diseño de la interfaz gráfica de usuario.
+        \item Selección de un lenguaje de programación y paradigma de programación adecuados.  
+        \item Implementación de los distintos programas de aplicación utilizando el lenguaje de programación seleccionado.   
+        \item Elaboración de pruebas de funcionamiento apropiadas, para comprobar el funcionamiento de los programas implementados.
+        \item Realización de Debugging para corregir los errores encontrados luego de realizar las pruebas.
+        \item Escritura del manual de usuario y tutorial de uso para los programas desarrollados. 
+\end{enumerate}
+
+\section{Contenido}
+A continuación se describe la estructura de este documento:
+
+\begin{itemize}
+        \item En el Capítulo \ref{sec:L01}, se ha descrito a profundidad la justificación del proyecto, el motivo de su desarrollo, los objetivos que éste debe cumplir, y la metodología seguida para la elaboración de los diversos programas de aplicación.
+        \item En el Capítulo \ref{sec:L02}, se encuentra una descripción de la teoría básica de funcionamiento de las maquinas herramientas que utilizan control CNC, además se incluye una explicación de los diversos conceptos de redes de comunicaciones y gráficos por computadora que son utilizados por los distintos programas desarrollados, finalmente se incluye la documentación del protocolo de comunicación de la cortadora láser.  
+        \item En el Capítulo \ref{sec:L03}, se encuentra un análisis de los diseños desarrollados para la creación de los programas de aplicación además se incluye un análisis de las consideradas para implementar estos diseños. 
+        \item En el Capítulo \ref{sec:L04}, se presentan los resultados obtenidos con los programas desarrollados y se describen las pruebas realizadas a estos programas.
+        \item En el Capítulo \ref{sec:L05}, se exponen las conclusiones del proyecto y recomendaciones para el desarrollo posterior de los programas diseñados.
+\end{itemize}
+
+%- declaración de un capítulo ---------------------------------------
+
+\chapter{Base teórica} \label{sec:L02}
+
+\section{Teoría Básica de Maquinas CNC}
+
+\subsection{Mecanizado}
+
+El mecanizado de un material según \cite{cnc_Basics}  se refiere a la aplicación de uno o varios procesos sobre una materia prima que permita alterar dicha materia de manera controlada hasta alcanzar una forma deseada. Existen dos tipos de alteración que se le puede efectuar a la materia prima, alteraciones sustractivas que consisten en procesos de remoción de material mediante cortes, abrasiones o remociones de viruta hasta alcanzar la forma deseada. El segundo tipo de alteraciones que puede ser efectuado se conoce como aditivas, en estos procesos sobre la materia prima se van depositando capas de material hasta alcanzar la forma final deseada.  
+Las alteraciones sobre la materia prima se realizan por medio de maquinaria denominada maquinas herramientas. \citep{cnc_Basics}   
+
+El mecanizado se utiliza en procesos industriales de fabricación, en particular para este trabajo es de interés el proceso de fresado de las PCB.
+
+Un PCB es una placa de substrato no conductor, que ofrece soporte mecánico y conecta mediante pistas de material conductor distintos componentes eléctricos para formar un circuito.
+
+El fresado de las PCB consiste en el proceso de remover áreas de cobre de una placa de circuito impreso para formar las pistas conductoras, generalmente se realiza con una fresadora de ahí su nombre, pero se puede realizar con otras máquinas herramientas que realicen alteraciones sustractivas, a estas máquinas herramientas se les conoce con el nombre colectivo de ''PCB prototyper''. \citep{cnc_Basics} 
+
+\subsection{Control Numérico por Computador (CNC)}
+El control numérico (CN) puede ser definido según \cite{cnc_Handbook} como la operación de máquinas herramientas por medio de instrucciones específicamente codificas que son enviadas al sistema de control de la máquina.
+
+Las primeras máquinas herramientas que utilizaban el control numérico, necesitaban de un operador que se colocaba  delante de un panel de control, el operador introducía las instrucciones necesarias para generar la pieza requerida y controlaba así la máquina. \citep{cnc_Handbook} 
+
+Según \cite{cnc_Handbook}, alrededor del año de 1972, se introdujo en las empresas de manufactura el concepto de Control Numérico por Computador (CNC), en el CNC el operador es sustituido por un computador, por lo que no es necesario tener un operador frente al panel de control de la máquina herramienta, en un sistema CNC moderno el encargado de enviar las instrucciones a la máquina herramienta es un micro controlador.      
+
+Al conjunto de todas las instrucciones necesarias para crear una pieza especifica, se le conoce como programa CNC, este programa puede ser guardado y en un futuro ser utilizado para crear piezas reproducibles. \citep{cnc_Handbook} 
+
+En la fabricación de un PCB se requiere primero realizar el diseño del circuito, luego utilizar un programa de diseño asistido por computador (CAD) para generar el archivo de layout. El archivo de layout contiene la información sobre los puntos de conexión de los dispositivos electrónicos, los disipadores de calor y las pistas que deben ser cortadas sobre el substrato.
+
+Una vez obtenido el archivo de layout este es utilizado para generar el programa CNC y así enviar las instrucciones necesarias a la máquina herramienta para producir el PCB. \citep{cnc_Handbook}      
+
+\subsection{Cortadora Láser }
+Para \cite{cnc_Handbook} existen diversos tipos de máquinas herramientas que utilizan el control CNC, entre las que realizan procesos sustractivos podemos mencionar los tornos, fresadoras, cortadoras de plasma, cortadoras láser y tambien cortadoras con chorro de agua. 
+ 
+Entre las que realizan procesos aditivos podemos mencionar las impresoras en 3D. 
+Para este trabajo el estudio se concentró en un tipo específico de máquina herramienta: las cortadoras láser y en su uso como un ''PCB prototyper''.
+
+Las cortadoras láser utilizan dispositivos ópticos para dirigir la salida de un láser de alta potencia hacia el material que va a ser mecanizado vaporizándolo, quemándolo o derritiéndolo. 
+
+Como lo expresa \cite{cnc_Handbook}, el sistema CNC se encarga de dirigir el movimiento del material al ser cortado o del dispositivo óptico para formar el patrón de corte requerido mediante 2 o 3 motores de paso, cada uno encargado de producir el movimiento en alguno de los ejes, además de controlar la potencia de salida del láser.  
+
+%Stepper Vs Dc
+\begin{figure}[!htb]
+        \includegraphics[width=0.7\linewidth]{./Figuras/laser_cutter.png}
+        \caption{Cortadora Laser Spectrum H-Series 20x12 tomado de } 
+        \label{Stepper}
+\end{figure}
+
+\subsection{Motor de paso o Stepper Motor}
+
+Un stepper motor consiste en un motor que al recibir una corriente eléctrica produce una rotación discreta del eje de transmisión del motor, en contra posición de un motor DC que produce una rotación continúa. \citep{stepper}
+  
+En la figura \ref{Stepper} se muestra la diferencia entre una rotación discreta y una rotación continua.  
+%Stepper Vs Dc
+\begin{figure}[!htb]
+        \includegraphics[width=0.7\linewidth]{./Figuras/Stepper.png}
+        \caption{Rotación de un motor de paso vs rotación de un motor DC. Tomado de \citep{stepper}} 
+        \label{Stepper}
+\end{figure}
+
+\subsection{Sistema De Coordenadas Cartesianas}
+
+Como indican los autores \cite{cnc_Basics}, las máquinas herramientas son usadas para producir dos tipos básicos de movimiento, movimientos punto a punto y movimientos de contorno.
+
+En los movimientos punto a punto a la máquina herramienta se le indica que se dirija a algún punto en específico y realice alguna operación, un corte por ejemplo, luego se le pide que se desplace hacia otro punto y realice otra operación y así sucesivamente hasta terminar el mecanizado de la pieza.
+
+En los movimientos de contorno, la máquina herramienta produce un solo movimiento continuo que produce la pieza. 
+En la figura \ref{Contorno} se muestra un corte realizado con un movimiento de contorno, mientras que en la figura \ref{Punto_punto} se muestra un corte realizado con movimientos punto a punto. Para fresado de las PCB se realizarán movimientos punto a punto solamente. 
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.7\linewidth]{./Figuras/Contorno_B.png}
+        \caption{Corte realizado con un movimiento de contorno. Tomado de \citep{cnc_Basics}} 
+        \label{Contorno}
+\end{figure}
+
+Según \cite{cnc_Basics}, el sistema cartesiano de coordenadas o sistema rectangular, fue creado por el filósofo y matemático francés Rene Descartes. Para los autores anteriormente citados, este sistema es útil para describir los movimientos punto a punto de las máquinas herramientas ya que estas se mueven en dos o tres ejes de movimiento (denominados alto, ancho y profundidad y generalmente representados por las letras X,Y,Z).
+
+El sistema de coordenadas cartesianas permite a la máquina localizar todos los puntos de la pieza de trabajo de forma precisa.
+
+La localización de todos los puntos en el sistema de coordenadas cartesianas se dan en referencia al punto en que todos los ejes se intersecan perpendicularmente entre sí, a este punto se le conoce como punto cero o punto de origen. \citep{cnc_Basics} 
+       
+En la figura \ref{puntoZero} se muestra la localización del punto cero para un sistema cartesiano de 2 ejes. 
+       
+\begin{figure}[!htb]
+        \includegraphics[width=0.7\linewidth]{./Figuras/puntoZero.png}
+        \caption{Punto cero en el sistema cartesiano de coordenadas. Tomado de \citep{cnc_Basics}} 
+        \label{puntoZero}
+\end{figure}       
+       
+       
+\subsection{Sistemas De Programación}
+
+De acuerdo a \cite{cnc_Basics} para programar los movimientos de una máquina herramienta por medio de CNC se pueden utilizar dos sistemas de programación distintos denominados sistema absoluto y sistema incremental.
+En el sistema incremental, la localización de los puntos se dan respecto a la distancia y dirección del punto anterior, por ejemplo se le puede indicar a la herramienta que debe moverse una pulgada a la derecha del punto anterior.\citep{cnc_Basics}    
+
+La otra alternativa es el sistema absoluto, en este sistema las localizaciones de todos los puntos se dan con respecto a un punto de origen. El punto de origen o punto cero de la máquina herramienta puede ser seleccionado a conveniencia y generalmente representa la posición inicial de la máquina.
+Si se va a utilizar el sistema cartesiano de coordenadas para localizar los puntos programados, el punto cero de la maquina es tomado como el punto cero de las coordenadas cartesianas. \citep{cnc_Basics}
+
+\subsection{Interpolación}
+De acuerdo a \cite{oppenheim1998}, la interpolación es un procedimiento para aproximar una función continua a partir de una cantidad discreta de datos conocidos. En el contexto de las máquinas herramientas, un algoritmo de interpolación le indica al sistema CNC como moverse de un punto a otro. 
+
+Como lo indican \cite{cnc_Basics} existen 5 tipos de algoritmos de interpolación utilizados en las maquinas herramientas: lineal, circular, parabólica, cubica y espiral.
+ 
+Las interpolaciones parabólica y cubica son solo utilizadas en industrias que manufacturan piezas de formas muy complejas como la industria aeroespacial y la interpolación espiral es utilizada en máquinas herramientas que requirieren formar agujeros para tornillos, como por ejemplo los taladros, por este motivo el estudio se concentró en la interpolación lineal y la interpolación circular solamente.\citep{cnc_Basics}   
+
+\subsubsection{Interpolacion Lineal}
+Según \cite{matlab_moler} un algoritmo de interpolación lineal consiste en un procedimiento para encontrar  varias líneas rectas que unan los puntos programados. Esto es posible por el hecho que dos puntos distintos en un plano permiten determinar un polinomio de primer grado cuyo gráfico forma una línea recta que contiene esos dos puntos.
+
+De acurdo \cite{cnc_Basics} la interpolación lineal requiere solamente de dos puntos programados, el punto de inicio y el punto final, el algoritmo generará las instrucciones necesarias para que la herramienta produzca un corte en línea recta que una estos dos puntos. Estos puntos deben estar en el sistema de coordenadas y el sistema de programación elegidos.
+
+La figura \ref{Interpolacion Lineal} ilustra el resultado de aplicar un algoritmo de interpolación lineal.  
+\begin{figure}[!htb]
+        \includegraphics[width=0.7\linewidth]{./Figuras/Interpolacion_Lineal}
+        \caption{Ejemplo de un camino recorrido por una cortadora utilizando interpolación Lineal. Tomado de \citep{cnc_Basics}} 
+        \label{Interpolacion Lineal}
+\end{figure}
+
+Para realizar un patrón de corte complejo, el punto final del corte anterior se transforma en el punto inicial para el siguiente corte, se procede así sucesivamente hasta lograr el patrón requerido.      
+Es posible producir curvas utilizando un algoritmo de interpolación lineal, para ello se requiere dividir la curva en segmentos de recta suficientemente cortos. \citep{cnc_Basics}
+
+En la figura \ref{Punto_punto} se muestra un patrón de corte realizado mediante interpolación lineal. 
+\begin{figure}[!htb]
+        \includegraphics[width=0.7\linewidth]{./Figuras/Punto_punto}
+        \caption{Ejemplo de un patrón de corte de varios puntos programados utilizando interpolación lineal. Tomado de \citep{cnc_Basics}} 
+        \label{Punto_punto}
+\end{figure}
+
+\subsubsection{Interpolacion Circular}
+Continuando con \cite {cnc_Basics}, un algoritmo de interpolación circular consiste en unir los puntos programados mediante un arcos o círculos, para lograrlo se necesitan un punto de inicio, un punto final, un punto que localice el centro del círculo, el radio del circulo y si el corte se realizará en sentido de las manecillas del reloj o contrario a estas.   
+
+En la figura \ref{Interpolacion Circular} se muestra un corte realizado por medio de interpolación circular. 
+
+%Stepper Vs Dc
+\begin{figure}[!htb]
+        \includegraphics[width=0.7\linewidth]{./Figuras/Interpolacion_Circular}
+        \caption{Ejemplo de un camino recorrido por una cortadora utilizando interpolación circular. } 
+        \label{Interpolacion Circular}
+\end{figure}
+
+\subsection{Estructura Del Programa CNC }
+
+A continuación se discutirá la estructura que tienen los programas CNC utilizados por la cortadora láser así como los comandos con los que dispone el algoritmo de interpolación para realizar los cortes.
+De acuerdo a \cite{Alex}, el programa CNC está formado por dos partes: el Header y los comandos de corte.
+El header representa información necesaria para la configuración de la cortadora, tiene un tamaño de 1024 bytes y cuenta con las siguientes partes \citep{Alex}
+
+\begin{enumerate}
+        \item 1 byte que define el tipo de corte que se realizará, para el corte vectorial su valor es de 0x02.  
+        \item 135 bytes con un valor de 0x00. 
+        \item Un string hexadecimal con los valores 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00. 
+        \item Una estructura de datos llamada Gstruct2 que contiene los parámetros de configuración. 
+        \item Un string hexadecimal con los valores 17 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00.
+        \item Y finalmente 510 bytes con un valor de 0x00.
+\end{enumerate}
+  
+En la figura \ref{Gstruct2} se observa la estructura de Gstruct2, los valores para estos bytes serán generados mediante la librería libre libjob desarrollada por \cite{Alex} por lo que el estudio se concentrará en los comandos de corte.  
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.9\linewidth]{./Figuras/Gstruct2.png}
+        \caption{Estructura de datos Gstruct2. Tomado de \citep{Alex}. } 
+        \label{Gstruct2}
+\end{figure}
+
+\subsubsection{Comandos de Corte}
+
+Según \cite{Alex}, para realizar los cortes, la cortadora láser cuenta con 4 comandos básicos: movimiento en el eje X, movimiento en el eje Y, movimiento en ambos ejes y No Operation.  
+Cada comando está formado por 4 bytes, el primer byte representa el signo del movimiento que se va a realizar, el segundo byte representa la cantidad de steps que se realizaran en el eje X, el tercer byte representa la cantidad de steps que se realizan en el Y y el último byte representa la potencia utilizada  por el láser. En la figura \ref{Cortes} se aprecia la estructura de los comandos de la cortadora.
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.7\linewidth]{./Figuras/ComandosDeCorte.png}
+        \caption{Estructura de los comandos de corte. Tomado de \citep{Alex}.} 
+        \label{Cortes}
+\end{figure}
+
+El byte de signo define el sentido de rotación de los motores de paso a paso y funciona de la siguiente manera: El primer bit del primer byte representa el signo del movimiento del eje X el cual toma un valor de cero cuando los movimientos se realizan en la dirección positiva y de 1 cuando se realizan en la posición negativa, el bit número dos representa el signo del movimiento en el eje Y y funciona de manera análoga al primer bit.
+Si el cabezal de la cortadora se mueve hacia la derecha, los movimientos se consideran movimientos positivos en el eje X, y si se mueve hacia atrás se consideran movimientos positivos en el eje Y. De forma análoga si el cabezal de la cortadora se mueve hacia la izquierda o hacia adelante los movimientos se consideran negativos en el eje X y el eje Y respectivamente.      
+
+Los siguientes dos bytes representan la cantidad de steps que deben moverse los motores de paso a paso, para realizar movimientos en el eje X, el segundo byte debe tomar un valor distinto de cero y el tercero un valor de cero. Para realizar movimientos en el eje Y el tercer byte debe tomar un valor distinto de cero y el segundo byte un valor de cero. Finalmente si ambos bytes toman un valor de cero se realizan movimientos simultáneos en ambos ejes.
+El último byte representa la potencia del láser que será utilizada para realizar el corte, si el valor del es de cero el cabezal de la cortadora realizará un movimiento pero el láser no se activará lo que permite realizar movimientos sin realizar cortes. \citep{Alex}
+
+El valor del cuarto byte se calcula con la ecuación \ref{Eq:Power} redondeada al entero más próximo y representada en valor hexadecimal. 
+
+\begin{equation}
+        \label{Eq:Power}
+        P(PD) = PD * \dfrac{255}{100} 
+\end{equation}
+
+\section{Gráficos Por Computadora}
+
+Los gráficos por computadora, según \cite{foley_graphics_c} se refiere a la ciencia de comunicar información visual por medio de una computadora, es un campo multidisciplinario que utiliza el modelado físico y matemático para describir formas y figuras.
+
+Entre sus enfoques se encuentran la comunicación entre computadoras y humanos mediante dispositivos tales como monitores, teclados, ratones e impresoras y la comunicación de la computadora con el mundo exterior mediante cámaras. \citep{foley_graphics_c} 
+
+En el contexto de este trabajo, el estudio se centró en dos conceptos utilizados para la representación de imágenes por computadora. Los gráficos vectoriales y los gráficos rasterizados.  
+
+\subsection{Gráficos Vectoriales}
+Indica \cite{foley_graphics_c} que un gráfico vectorial, es un tipo de gráfico en el que se utilizan primitivas geométricas (puntos, líneas, curvas o polígonos) para representar las imágenes.
+
+En los gráficos por computadoras se utilizan los modelos matemáticos de dichas primitivas para formar el gráfico. 
+Los gráficos vectoriales están basados en el concepto de vectores, a lo largo del gráfico se cuentan con puntos de control con una posición absoluta en los ejes cartesianos XY, el vector contiene la información necesaria para unir los puntos de control  mediante las primitivas geométricas adecuadas, por ejemplo si se desea trazar una línea recta entre dos puntos de control, el vector contendría cuál de los puntos de control se tomaría como el punto inicial de la recta y cuál de los puntos de control se tomaría como el punto final de la recta. Con esta información es posible calcular la ecuación de la recta que une ambos puntos.      
+
+Además, contiene información acerca del color, grosor y relleno necesario para realizar el trazado de las primitivas.
+Para formar el gráfico, varios vectores son unidos uno tras otro formando un camino, a este camino se le da el nombre de Path. \citep{foley_graphics_c}
+
+En la figura \ref{bitmap}, se muestran un gráfico ideal y sus representaciones como un gráfico vectorial y como un gráfico raterizado.
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.7\linewidth]{./Figuras/Graficos_dif.png}
+        \caption{Diferencia entre un Gráfico Ideal, un gráfico vectorial y un gráfico raterizado. Tomado de \citep{foley_graphics_c}.} 
+        \label{Graficos_dif}
+\end{figure}
+
+\subsection{Gráficos Rasterizados}
+
+Un gráfico rasterizado, utiliza una matriz de puntos para representar una grilla rectangular de puntos de color. Cada punto en la matriz representa un punto en el plano cartesiano del monitor, papel, o dispositivo de visualización, cada punto se representa en la matriz por uno o más bits que contienen la información de color que debe ser desplegada. Por ejemplo en una escala monocromática (de un solo color) cada punto se representa por un solo bit de color, si el bit está en cero el punto debe ser desplegado en color blanco en el display, mientras que si el bit está en uno, el punto debe desplegarse en color negro. Un ejemplo de este tipo de gráfico se muestra en la figura \ref{bitmap}.\citep{foley_graphics_c}     
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.5\linewidth]{./Figuras/bitmap}
+        \caption{Gráfico Rasterizado en escala monocromática. Tomado de \citep{foley_graphics_c}.} 
+        \label{bitmap}
+\end{figure}
+\subsection{Portable Document Format (PDF)}
+
+De acuerdo a \cite{adobe2005pdf} el formato de documento portátil (PDF) es un formato que permite a los usuarios desplegar documentos independientemente del entorno donde fueron creados. 
+
+El formato PDF utiliza el lenguaje de programación PostScript(PS) para describir textos y gráficos pero agrega estructuras de control adicionales que permite una descripción más estructurada que la obtenida utilizando solamente un programa escrito en PS.  
+
+Un documento PDF consiste en una colección de objetos que en conjunto, describen la apariencia de una o más páginas. Cada página de documento puede contener texto, gráficos e imágenes. 
+
+El programa de aplicación que produce el archivo PDF debe generar una descripción de la página independiente del dispositivo donde será visualizada utilizando la sintaxis del lenguaje de descripción.
+
+Un programa que controla un dispositivo de salida específico, por ejemplo un monitor, debe interpretar esta descripción y mostrarla en ese dispositivo.
+
+El modelo de imagen de Adobe utilizado en los archivos PDF consiste en una vista bidimensional de los gráficos. En esta vista, "pintura" es colocada para representar formas geométricas, líneas o imágenes digitalizadas.
+Esta pintura puede ser de varios colores, blanca, negra o en escala de grises.
+
+Para formar los gráficos, el contenido es descrito mediante operadores y operandos. \citep{adobe2005pdf}   
+    
+Según \cite{adobe2005pdf}, para desplegar un archivo PDF es necesario seguir los siguientes pasos:
+\begin{itemize}
+        \item Extraer los contenidos de cada página, cada stream de contenido es esencialmente un script de PostScript usando procedimientos muy específicos como m para moveto y l para lineto.
+        \item Decodificar los textos o gráficos comprimidos utilizando el filtro apropiado.
+        \item Poner la información en el orden correcto
+        \item Transmitir el programa en PostScript hacia el dispositivo de salida.
+\end{itemize}
+
+\subsection{Sintaxis de un archivo PDF}
+
+Los archivos PDF usan estructuras de datos llamadas Objetos, estos pueden ser de 8 tipos, según lo expresa \cite{adobe2005pdf}:
+
+\begin{itemize}
+        \item Valores booleanos.
+        \item Números reales o números enteros
+        \item Cadenas de caracteres (Strings)
+        \item Nombres
+        \item Arreglos de datos (Arrays)
+        \item Diccionarios
+        \item Flujos de datos (streams)
+        \item Objetos de tipo nulo.
+\end{itemize}
+ 
+Los objetos pueden usar etiquetas para que otros objetos se refieran a ellos, un objeto con una etiqueta se llama un objeto indirecto. 
+
+La etiqueta usada para referirse a los objetos indirectos consiste en dos partes: Un número entero llamado número de identificación que generalmente va en orden secuencial según su orden de creación, así por ejemplo el primer objeto creado tendría número de identificación 01, y el siguiente objeto creado tendría como número de identificación 02 y así sucesivamente. Sin embargo la numeración se puede realizar de forma arbitraria mientras cada objeto se le asigne 
+un número único y un número no negativo llamado número de generación, la primera vez que un objeto es creado se le asigna un número de generación de cero. Si el archivo PDF es modificado posteriormente por algún programa, el número de generación puede tomar un valor distinto de cero que representa cuantas veces se ha modificado el objeto. \citep {adobe2005pdf}
+
+A continuación se observa la sintaxis de un objeto recién creado.
+
+\begin{lstlisting}[language=PostScript, caption=Ejemplo de Un Objeto Indirecto en PDF] 
+        17 0 obj
+           ...
+    endobj
+\end{lstlisting}
+
+En el contexto de los gráficos vectoriales los objetos de interés son los objetos tipo stream.
+ 
+\subsubsection{Objetos de Flujo de Datos}
+
+Los objetos tipo stream, \cite{adobe2005pdf}, son objetos que contienen secuencias de bytes que pueden alcanzar cualquier tamaño requerido, esta secuencia de bytes se encuentra antecedida por la palabra clave stream y precedida por la palabra clave endstream.
+
+Cada stream cuenta con una entrada que representa el tamaño del stream en bytes. Ademas pueden contar una entrada adicional llamada filtro de compresión. Si esta entrada está presente, el stream de datos ha sido comprimido utilizando el algoritmo Flate-Deflate. \citep{adobe2005pdf}
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=HTML, caption=Ejemplo de un Stream Binario Codificado] 
+        3 0 obj
+                << /Length 4 0 R 
+                   /Filter /FlateDecode >>
+                
+                stream
+                        4E 6F 76 20 73 68 6D 6F 7A 20 6B 61 20 70 6F 70 2E 06 79
+                endstream
+        endobj
+    \end{lstlisting}
+\end{minipage}
+
+\subsubsection{Flate-Deflate Compression Algorithm}
+
+El algoritmo de compresión Flate para \cite{adobe2005pdf} es utilizado cuando se requiere comprimir información que forma secuencias, como los archivos de texto. Este algoritmo realiza una compresión libre de pérdidas.
+  
+Para descomprimir los archivos comprimidos con el algoritmo Flate, se utiliza el algoritmo Deflate. Ambos algoritmos están implementados en la librería ZLIB la cual ha sido portada a varios lenguajes de programación. \citep{adobe2005pdf}  
+ 
+\subsection{Post-script}
+PS es un lenguaje de computadoras utilizado para la creación de gráficos vectoriales. 
+Un gráfico vectorial en PDF está formada por varios operandos y operadores en PS que son guardados en un objeto tipo Stream y pueden o no ser comprimidos usando el filtro "Flate Decode"\citep{adobe2005pdf}
+
+\subsection{Operadores PS para Gráficos Vectoriales}
+Los caminos (Paths) son estructuras de datos que definen formas, trayectorias y regiones en una imagen en PS, el camino está compuesto por segmentos que pueden ser líneas rectas, curvas, etc. conectadas o no unas con otras.  Un par de segmentos están conectados entre sí solo si estos están definidos de forma consecutiva, con el segundo segmento del camino iniciando justo donde termina el primero.   
+
+Los objetos gráficos son definidos por una secuencia de operadores utilizados para construir un camino. 
+
+La descripción de una página inicia con un camino vació, los operadores de construcción son agregados de manera secuencial iniciando ya sea con un operando Moveto o un operando Rectángulo.
+
+Al camino en construcción se le conoce como  camino actual o Current Path y al punto final del segmento agregado más recientemente al camino actual, se le conoce como punto actual o Current Point. \cite{adobe2005pdf}
+
+A continuación se presentan los operadores utilizados en PS para gráficos vectoriales:
+
+\subsection{Moveto}
+Sintaxis: X Y m
+El operador moveto comienza un nuevo path moviendo el Current Point hacia las coordenadas [X,Y].   
+
+\subsection{Lineto}
+Sintaxis: X Y l
+El operador lineto agrega una línea recta al camino, la línea recta inicia en el Current Point y termina en las coordenadas [X,Y]. El nuevo Current Point es el punto [X,Y].
+
+\subsection{Curveto}
+Sintaxis: $X_1$  $Y_1$ $ X_2$  $Y_2$  $X_3$  $Y_3$ c
+El operador curveto agrega una curva cubica de Bézier al camino, la curva inicia en el Current Point y termina en las coordenadas [$X_3$,$Y_3$]. La curva de Bézier utiliza los puntos [$X_1$,$Y_1$] y [$ X_2$,$Y_2$] como puntos de control. El nuevo Current Point es el punto [$X_3$,$Y_3$]. \citep{adobe2005pdf}
+  
+\subsubsection{Curvas Cubicas De Bézier}
+Una curva de Bézier, \cite{adobe2005pdf},  es un modelo matemático utilizado para representar curvas que puedan ser escaladas indefinidamente.
+
+Las curvas de Bézier son curvas paramétricas, que tienen la forma de un polinomio de Bernstein de grado N, una curva cúbica utiliza entonces, un polinomio de Bernstein de grado 3, en las ecuaciones \ref{Eq:Bezier1} y \ref{Eq:Bezier1} se muestra la parametrización para una curva cúbica de Bézier en las coordenadas XY.
+  
+Las curvas cubicas de Bézier utilizan cuatro puntos para controlar la forma de la curva, el punto inicial [$X_0$,$Y_0$] cuando el parámetro $t$ tiene un valor de $0.0$ la curva se localiza en este punto, el punto final [$X_3$,$Y_3$] cuando el parámetro $t$ tiene un valor de $1.0$ la curva se localiza en este punto, ademas de dos puntos adicionales de control [$X2$,$Y2$] y [$X3$,$Y3$] que no están contenidos en la curva.
+
+Para los valores del parámetro $t$ que se encuentran entre 0.0 y 1.0, se obtienen puntos localizados en la curva que se encuentran entre el punto inicial y el punto final. \citep{adobe2005pdf}
+
+\begin{equation}
+        \label{Eq:Bezier1}
+        X(t) = (1 - t)*X_0 + 3t*(1 - t)*X_1 + 3t*(1 - t)*X_2 + t*X_3
+\end{equation}
+
+\begin{equation}
+        \label{Eq:Bezier2}
+        Y(t) = (1 - t)*Y_0 + 3t*(1 - t)*Y_1 + 3t*(1 - t)*Y_2 + t*Y_3
+\end{equation}
+
+\subsection{Rectangle}
+Sintaxis: X Y Ancho Altura re
+El operador rectangle agrega un rectángulo al camino, la esquina inferior izquierda del rectángulo se ubica en las coordenadas [X,Y] el rectángulo tiene un tamaño dado por los operandos Ancho y Altura.   
+
+\subsection{Closepath}
+Sintaxis: h
+El operador Closepath cierra el camino agregando una linea recta desde el "Current Point" hasta el punto inicial del primer segmento en el "Current Path". \cite{adobe2005pdf}
+%\section{Abstract Data structures}
+%Queue:
+%Stack:
+
+\section{Redes de Comunicaciones}
+
+\subsection{Modelo de Referencia TCP/IP }
+Según indica \cite{tanenbaum2011Redes}, en redes de computadoras, la suite TCP/IP es un conjunto de protocolos de comunicación utilizado en internet y otras redes similares que provee de un modelo de referencia de como una comunicación end-to-end debe transmitir, empacar, enrutar y direccionar la información.   
+Esta funcionalidad está organizada en cuatro capaz de abstracción, para propósitos de realizar la conexión entre la cortadora láser y la computadora encargada de enviar el programa CNC, el estudio se centrará en 3 de las capas del modelo: la capa de interred, la capa de transporte y la capa de aplicación.    
+
+\subsection{La Capa de Interred ó IP}
+La Capa de Interred también conocida como protocolo de Internet (IP), es un protocolo de comunicación que permite la comunicación entre un dispositivo emisor y un dispositivo receptor conocido por el nombre de Host, el objetivo de esta capa es que cada Host pueda enviar paquetes de información el uno al otro a través de una red de comunicaciones, para ello cada Host cuenta con una dirección que los distingue de los demás miembros de la red llamada dirección IP.  
+ 
+La dirección IP es un número de 32 bits (versión 4 del protocolo) o de 128 bits (versión 6 del protocolo), las direcciones IP son utilizadas por los enrutadores para saber a dónde enviar cada paquete que circula la red. \citep{tanenbaum2011Redes}   
+
+\subsection{La Capa de Transporte ó TCP}
+
+\cite{tanenbaum2011Redes} indica que la Capa de Transporte también llamada protocolo de control de transmisión (TCP) es un protocolo de comunicación que funciona como una capa de abstracción extra que se coloca por encima del protocolo IP, esta capa fue diseñada para permitir que varios Host se puedan comunicar entre ellos de una forma confiable y sin errores.       
+
+El protocolo TCP presenta una capa de abstracción a la aplicación que utiliza la suite TCP/IP , de esta forma la aplicación no necesita saber cómo se realizan las transacciones en el protocolo IP sino que desde el punto de vista de la aplicación, esta se está comunicando mediante una comunicación punto a punto directamente con el otro Host por medio de un socket de comunicación. 
+
+Un socket de comunicación TCP es una representación abstracta de la conexión punto a punto entre dos Host, el socket requiere de una dirección IP y un número de puerto para ambos Host y de esta forma le presenta a la aplicación una forma de comunicarse con otro Host. Los puertos permiten que entre los dos Host existan varios canales de comunicación simultáneos, desde el punto de vista de la aplicación es como si ambos Host estuvieran conectados mediante varios cables. \citep{tanenbaum2011Redes}   
+ 
+\subsection{Protocolo de Comunicación De La Cortadora Láser} \label{sec:L2.3.4}
+
+Finalmente para establecer la comunicación entre la computadora y la cortadora láser es necesario un protocolo de comunicación que se sitúa por encima del protocolo TCP, este protocolo representa la capa de aplicación de la suite TCP/IP.
+
+Las comunicaciones con la cortadora se realizarán por medio del programa de cortado desarrollado. Tanto la computadora que envía el programa CNC, como la cortadora láser estarán conectadas a una misma red inalámbrica local (WLAN) y los mensajes enviados y recibidos desde y hacia la cortadora estarán en formato ASCII. 
+
+A continuación se presentaran los pasos necesarios para establecer la comunicación entre la cortadora láser y la computadora para ello se cita a \cite{Alex}:
+
+\begin{enumerate}
+        \item El primer paso para establecer la comunicación es crear un Socket TCP y conectarlo al puerto de comunicación 12345 de la cortadora láser, denominado iTalk por el fabricante. Adicionalmente se requiere crear un Socket y conectarlo con el puerto 12346 de la cortadora para el envío del programa CNC.
+        \item Si la conexión fue exitosa,se iniciara una sesión de comunicación y la cortadora responderá con el mensaje " 100 Hello 192.168.16.143. FSL Laser Ready, your session ID 00000001\textbackslash n"
+        \item Luego se envía el mensaje "xjob\textbackslash n" hacia la cortadora para indicarle que se planea enviar un programa CNC.
+        \item La cortadora responde con el mensaje: 
+        "103 JOB\_OK, JobID 00000001 SessionID 00000001\textbackslash r\textbackslash n", donde SessionID y JobID son contadores hacia arriba, SessionID lleva la cuenta de cuantas conexiones se han realizado desde que la cortadora fue encendida y JobID lleva la cuenta de cuantos trabajos de corte (Programas CNC) se han realizado en la sesión actual.
+        \item Se envía hacia la cortadora el tamaño del programa CNC en bytes
+        \item La cortadora responde con el mensaje "102 OK\textbackslash r\textbackslash n"
+        \item Luego se procede a enviar el mensaje " sending\textbackslash n"
+        \item La cortadora contesta con el mensaje "101 GO AHEAD\textbackslash r \textbackslash n"
+        \item En este punto la cortadora espera recibir el programa CNC por medio del puerto numero 12346
+        \item La computadora envía el programa CNC por medio del puerto 12346
+        \item La cortadora responde con el mensaje "104 GOT <Cantidad de bytes recibidos> bytes\textbackslash r\textbackslash n "  
+        \item Si la cantidad de bytes recibidos por la cortadora fue igual a la cantidad de bytes enviados, la computadora puede pedirle a la cortadora que inicie la ejecución del programa CNC enviando el mensaje "run\textbackslash n".
+        \item Al finalizar la ejecución del programa, la cortadora le responde a la computadora enviando el mensaje "102 OK\textbackslash r \textbackslash n"
+        \item Finalmente, la computadora puede elegir enviar otro programa CNC para realizar otro corte ó terminar la sesión de comunicación con la cortadora enviando el mensaje "bye \textbackslash n"   
+\end{enumerate}
+ 
+\chapter{Desarrollo} \label{sec:L03}
+
+\section{Programa Extractor de Datos del PDF}
+Para implementar el software de cortado de la impresora láser fue necesario implementar primero una serie de programas auxiliares.
+
+El primero de estos programas fue el software de extracción de la información del PDF. 
+Este software está encargado de localizar el objeto PDF que contiene la información de la imagen vectorial que va a ser utilizada para la generación del programa CNC.
+
+En la Figura \ref{Extractor} se muestra un diagrama de flujo con el diseño del programa.
+
+El programa recibe como parámetro de entrada la localización del archivo PDF dentro del sistema de archivos del sistema operativo y regresa como valor de salida script con los operadores PS que forman la imagen.
+
+El algoritmo principal va leyendo el archivo PDF línea por línea, si encuentra la línea '/Filter /FlateDecode' significa que el objeto ha sido comprimido y debe ser descomprimido con el algoritmo Deflate por lo alza una bandera llamada Deflate.
+
+Una vez el programa localiza la palabra clave 'stream', empieza a guardar todos las líneas en una variable llamada BinStream hasta que localiza la palabra clave 'endstream'. Como se está trabajando con archivos PDF de una sola página, solo existe un objeto tipo stream en todo el documento.  
+
+Una vez se ha llegado al final del documento representado por el carácter EOF, el programa revisa si la bandera Deflate se alzó, de ser así, el programa llama a la librería Zlib para descomprimir el stream. Finalmente el programa retorna el stream por medio de la variable DeflatedStream. 
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.7\linewidth]{./Figuras/PDF_Data_Extractor}
+        \caption{Programa Extractor de Datos del PDF} 
+        \label{Extractor}
+\end{figure}
+
+Para implementar el programa se decidió crear una clase llamada PdfDataExtractor, la clase cuenta con dos miembros FilePath y BinStream.
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Programa Extractor de Datos Del PDF] 
+        class PdfDataExtractor(object):
+    def __init__(self, file_path):
+        self.FilePath = file_path
+        self.BinStream = ''     
+    \end{lstlisting}
+\end{minipage}
+
+FilePath es una variable de tipo string que guarda la localización del archivo PDF y BinStream es una variable que guarda el script PS extraído como un string de caracteres Ascii.       
+
+La clase cuenta con ademas con 3 métodos SetFilePath, GetFilePath y Extract.
+
+El método SetFilePath toma como entrada un string con la localización de un archivo PDF en el sistema de archivos del sistema operativo y lo guarda como el nuevo valor de FilePath. El método GetFilePath regresa como valor de retorno un string con el valor actual de FilePath y el método Extract implementa el algoritmo principal de la figura \ref{Extractor}. 
+
+A continuación se presenta la implementacion del método Extract.
+        \begin{lstlisting}[language=Python, caption=Implementación del Programa Extractor de Datos Del PDF] 
+        
+    def Extract(self):
+        pdfFileObj = open(self.FilePath,'rb')
+                
+                # This Flag determines if the stream must be decompressed       
+        Deflate = False
+       
+        # Extract the binary stream from the pdf
+        for line in pdfFileObj:
+            if line == '   /Filter /FlateDecode\n':
+                Deflate = True
+            if (line == 'stream\n'):
+                line = pdfFileObj.next()
+                while (line !='endstream\n'):
+                    self.BinStream = self.BinStream + line
+                    line = pdfFileObj.next()
+        pdfFileObj.close()
+        # Deflate binary stream if necesary
+        if Deflate:
+            DeflatedStream = zlib.decompress(self.BinStream)
+        else:
+            DeflatedStream = self.BinStream
+        return DeflatedStream   
+        
+        
+    \end{lstlisting}
+
+\section{Parser de PS a Estructura de Datos Vectoriales}
+El siguiente programa auxiliar es el parser de PS, una estructura de datos. Este programa es el encargado de tomar las operaciones contenidas en el script de PS extraído por el programa extractor de datos y las interpreta de tal forma que sea posible generar los vectores que constituyen el gráfico vectorial.  
+Para generar los vectores, se decidió utilizar el sistema de programación absoluto ya que este es el  sistema utilizado por las operaciones en PS.
+
+Se tomó como referencia para la creación de los vectores, la esquina superior izquierda del archivo PDF, además se tomó el eje X positivo hacia la derecha del punto cero y el eje Y positivo hacia abajo del punto de referencia.
+En la figura \ref{PDF_Parser} se muestra el diseño del parser, el programa toma como parámetro de entrada el script PS mediante la variable DeflatedStream y retorna como salida todos los vectores que forman el gráfico.
+
+El programa utiliza dos estructuras de datos internas, la primera se denominó current\_ path puesto que representa una lista de todos los vectores que forman el gráfico, la segunda estructura se denominó VectorCut ya que representa los vectores que serán utilizados para realizar el corte con la cortadora láser. 
+ 
+Adicionalmente, los comandos PS utilizan una sintaxis postfix por lo que se decidió utilizar una arquitectura de pila, para ello se utilizó una pila denominada operands\_ stack.
+Finalmente, para la creación de los vectores se utilizaran dos variables extras: Starting Position que representa el punto inicial del path y CurrentPosition que representa el punto final del path.  
+
+El parser toma cada elemento guardado en la variable DeflatedStream, si el elemento es un operando, este es empujado hacia la pila, si el elemento es un operador el parser llama a la subrutina adecuada.
+
+A cada operador PS se le asignó una subrutina particular, cada subrutina define la creación de uno o más vectores, al final de cada subrutina, el programa agrega los vectores a Current\_ Path.
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.9\linewidth]{./Figuras/PDF_Parser}
+        \caption{Parser de PDF a Estructura de Datos Vectoriales} 
+        \label{PDF_Parser}
+\end{figure}
+
+\subsection{Clase VectorCut}
+Para la implementación del parser se crearon varias clases, la primera clase llamada VectorCut, es la estructura de datos principal del parser.
+
+Esta clase posee 5 miembros: StartingPoint, EndingPoint, LaserPower, DeltaX y DeltaY.
+        
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Clase VectorCut] 
+class VectorCut(object):
+    # Constructor
+    def __init__(self, start=[0.0, 0.0], end=[0.0, 0.0], power=0.0):
+        self._StartingPoint_ = start
+        self._EndingPoint_ = end
+        self._LaserPower_ = power
+        self._DeltaX_ = abs((self.__EndingPoint__[0] - self.__StartingPoint__[0]))
+        self._DeltaY_ = abs((self.__EndingPoint__[1] - self.__StartingPoint__[1]))
+    \end{lstlisting}
+\end{minipage}
+
+StartingPoint y EndingPoint representan el punto de inicial y el punto final del vector respectivamente, ambas variables son del tipo lista, el primer elemento de la lista representa la posición en la coordenada X del punto, mientras que el segundo elemento representa la posición Y del punto. La variable LaserPower representa el porcentaje de potencia que será utilizado para realizar el corte, finalmente las variables DeltaX y DeltaY representan la distancia de separación entre los puntos inicial y final, DeltaX en el eje X y DeltaY en el eje Y.  
+  
+Adicionalmente, la clase incluye un método llamado scale que permite a la clase escalar el vector. El método recibe como entrada un número en punto flotante y multiplica cada elemento de las listas EndingPoint y StartingPoint por este número.  
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Clase VectorCut] 
+    def ScaleVector(self, Scale=1.0):
+        self.__StartingPoint__[0] *= Scale
+        self.__StartingPoint__[1] *= Scale
+        self.__EndingPoint__[0] *= Scale
+        self.__EndingPoint__[1] *= Scale
+    \end{lstlisting}
+\end{minipage}
+
+\subsection{Clase CutterPath}
+La siguiente clase se llama CutterPath, esta clase representa el path formado por los vectores de corte, a continuación se muestra el código implementado.   
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Clase CutterPath] 
+class CutterPath(object):
+    def __init__(self):
+        self.__Queue__ = deque([])
+    \end{lstlisting}
+\end{minipage}
+
+Se eligió una cola como la estructura de datos utilizada, ya que se requiere que los cortes se realicen en el orden dictado por el archivo PDF. Para implementar esta funcionalidad se utilizó el contenedor de python deque. La clase cuenta con 3 métodos: el método add añade un vector al final de la lista, el método pop elimina el primer elemento de la lista y lo regresa como valor de retorno y finalmente el método len regresa un número entero que representa cuantos vectores forman el camino. 
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Métodos de CutterPath] 
+    # Length of the path, how many vectors form the path
+    def __len__(self):
+        return len(self.__Queue__)
+    # Add a vector to the path
+    def add(self, Vector):
+        self.__Queue__.append(Vector)
+    # Remove a Vector from the path
+    def pop(self):
+        return self.__Queue__.popleft()
+    \end{lstlisting}
+\end{minipage}
+  
+  
+\subsection{Clase PostScriptInterpreter}
+Finalmente se creó una clase llamada PostScriptInterpreter, esta clase implementa el algoritmo de la figura \ref{PDF_Parser}, la clase cuenta con 5 miembros: OperandsStack, CurrentPosition, StartingPosition, CurrentPath y Power.
+  
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Clase PostScriptInterpreter.] 
+def __init__(self, power=0.0):
+        self.OperandsStack = []
+        self.CurrentPosition  = [0.0, 0.0]
+        self.StartingPosition = [0.0, 0.0]
+        self.__CurrentPath__ = CutterPath()
+        self.__Power__ = power
+    \end{lstlisting}
+\end{minipage}
+
+Operands\_ stack es una instancia del objeto lista de python, para utilizarla con la funcionalidad de pila se emplearon los métodos append que agrega un elemento al final de la lista y pop que retorna el último elemento de la lista. StartingPosition y CurrentPosition siguen la nomenclatura utilizada hasta este momento para definir puntos, se utilizó una lista con 2 elementos. En los archivos PDF el path siempre comienza por el punto de origen, por lo que las variables StartingPosition y CurrentPosition tomarán el valor inicial de [0.0, 0.0].
+es la pila que fue utilizada para guardar los operandos, CurrentPosition es una lista que contiene la posición final del último vector creado por el programa, StartingPosition guarda la posición inicial del primer vector que forma el path, CurrentPath es una instancia de la clase CutterPath, está es la encargada de de guardar los vectores que forman el path que va a ser cortado y finalmente la variable Power representa el porcentaje de potencia que va a ser utilizado en el corte. 
+
+La clase cuenta con un método llamado IsFloat que se encarga revisar si el elemento obtenido de DeflatedStream es o no un número.  
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Método IsFloat.] 
+    def __IsFloat__(self, value):
+        try:
+            float(value)
+            return True
+        except:
+            return False
+    \end{lstlisting}
+\end{minipage}
+
+El método principal de la clase PostScriptInterpreter se llama Operate, este método es el encargado de llamar a las subrutinas que generan los vectores de corte dependiendo del operador recibido.   
+        \begin{lstlisting}[language=Python, caption=Método principal de la clase PostScriptInterpreter: Operate.] 
+    def Operate(self, Op):
+        if self.__isfloat__(Op):
+            self.OperandsStack.append(Op)
+        else:
+            # Create a Square
+            if Op == 're':
+                self.__Square__()
+            # Moveto
+            elif Op == 'm':
+                self.__Moveto__()
+            # Lineto
+            elif Op == 'l':
+                self.__Lineto__()
+            # Curveto
+            elif Op == 'c':
+                self.__Curveto__()
+            # Close Current Path
+            elif Op == 'h':
+                self.__ClosePath__()
+            else:
+                print 'Do nothing'
+    \end{lstlisting}
+
+Se diseñó una subrutina para cada operador PS que afecta el path, a continuación se discutirán a fondo cada una de estas subrutinas.
+
+La primera subrutina se llama Lineto y es la encargada de interpretar el operador del mismo nombre, la subrutina saca los dos primeros operandos del Stack y forma un punto con ellos, luego crea un VectorCut que utiliza la posición actual como punto inicial, el punto generado como punto final además y utiliza el valor de la variable Power para definir el valor de la potencia del corte.  
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Método Lineto] 
+def __Lineto__(self):
+        YMovement= float(self.OperandsStack.pop())
+        XMovement= float(self.OperandsStack.pop())
+        self.CurrentPath.append(VectorCut(self.CurrentPosition, [XMovement, YMovement], self.__Power__))
+        self.CurrentPosition = [XMovement, YMovement]
+    \end{lstlisting}
+\end{minipage}
+
+La siguiente subrutina se llama Moveto, esta subrutina saca los dos primeros operandos del Stack y forma un punto con ellos, luego crea un VectorCut que utiliza la posición actual como punto inicial, el punto generado como punto final  y utiliza una potencia de corte igual a cero.  
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Método Moveto] 
+    def __Moveto__(self):
+        YMovement= float(self.OperandsStack.pop())
+        XMovement= float(self.OperandsStack.pop())
+        self.CurrentPath.append(VectorCut(self.StartingPosition, [XMovement, YMovement], 0.0))
+        self.CurrentPosition = [XMovement, YMovement]
+        self.StartingPosition = [XMovement, YMovement]
+    \end{lstlisting}
+\end{minipage}
+
+La siguiente subrutina se llama ClosePath, esta subrutina se encarga de cerrar el path actual creando un VectorCut iniciando en CurrentPosition y terminando en StartingPosition.   
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Método ClosePath.] 
+    def __ClosePath__(self):
+        self.CurrentPath.append(VectorCut(self.CurrentPosition, self.StartingPosition, self.__power__))
+        self.CurrentPosition = self.StartingPosition
+        \end{lstlisting}
+\end{minipage}
+
+La subrutina Square toma los parámetros, height, width, X, y Y de la pila y crea 4 puntos que representa las 4 esquinas del rectángulo:
+
+\begin{enumerate}
+        \item La esquina inferior izquierda [X,Y]
+        \item La esquina inferior derecha   [(X + width), Y]
+        \item La esquina superior derecha   [(X + width), (Y + height)]
+        \item La esquina superior izquierda [X , (Y + height)]
+\end{enumerate} 
+
+Luego crea cinco vectores, el primero un vector de movimiento que va desde el CurrentPoint hasta el punto 1 y cuatro vectores que pasan por cada una de las cuatro esquinas del rectángulo en el orden establecido arriba, finalizando de nuevo en el punto 1. 
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Método Square.] 
+        def __Square__(self):
+        square_height = float(self.OperandsStack.pop())
+        square_width  = float(self.OperandsStack.pop())
+        square_Y0     = float(self.OperandsStack.pop())
+        square_X0     = float(self.OperandsStack.pop())
+        Point1 = [square_X0, square_Y0]
+        Point2 = [square_X0+square_width, square_Y0]
+        Point3 = [square_X0+square_width, square_Y0+square_height]
+        Point4 = [square_X0, square_Y0+square_height]
+        self.CurrentPath.append(VectorCut(self.CurrentPosition, Point1))
+        self.CurrentPath.append(VectorCut(Point1, Point2, self.__power__))
+        self.CurrentPath.append(VectorCut(Point2, Point3, self.__power__))
+        self.CurrentPath.append(VectorCut(Point3, Point4, self.__power__))
+        self.CurrentPath.append(VectorCut(Point4, Point1, self.__power__))
+        self.CurrentPosition = Point1
+        \end{lstlisting}
+\end{minipage}
+
+La última subrutina es la subrutina Curveto, este método toma de la pila los cuatro puntos de control necesarios para generar la curva cúbica de Bézier y utiliza las formulas \ref{Eq:Bezier1} y \ref{Eq:Bezier2} para producir una curva con cien puntos.
+
+La subrutina aplica un algoritmo de interpolación lineal para unir los puntos generados con las ecuaciones de Bézier con líneas rectas.
+
+El algoritmo funciona uniendo dos puntos consecutivos de la curva mediante un VectorCut.
+A continuación se muestra la implementación de esta subrutina:
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Método Square.] 
+        def __Curveto__(self):
+        # Starting Point
+        Y0= self.CurrentPosition[1]
+        X0= self.CurrentPosition[0]
+        # Ending Point
+        Y3= float(self.OperandsStack.pop())
+        X3= float(self.OperandsStack.pop())
+        # Bezier Control Points
+        Y2= float(self.OperandsStack.pop())
+        X2= float(self.OperandsStack.pop())
+        Y1= float(self.OperandsStack.pop())
+        X1= float(self.OperandsStack.pop())
+        # Setup the parametrization
+        number_of_points = 100
+        t = scipy.linspace(0, 1, number_of_points)
+        # Use the Bezier formula
+        Bx = (1-t)**3*X0 + 3*(1-t)**2*t*X1 + 3*(1-t)*t**2*X2 + t**3*X3
+        By = (1-t)**3*Y0 + 3*(1-t)**2*t*Y1 + 3*(1-t)*t**2*Y2 + t**3*Y3
+        bpc = 0  # Bezier Point Counter
+                #Bezier Vector Generator
+        for point in t:
+            xpos = Bx[bpc]
+            ypos = By[bpc]
+            CurrentPos = [xpos, ypos]
+            tempVector = VectorCut(self.CurrentPosition, CurrentPos, self.__power__)
+            self.CurrentPath.append(VectorCut(self.CurrentPosition, CurrentPos, self.__power__))
+            self.CurrentPosition = CurrentPos
+            bpc += 1
+        self.CurrentPosition = [X3, Y3]
+        \end{lstlisting}
+\end{minipage}
+
+\section{Generador de Programas CNC}
+El siguiente programa desarrollado fue el Generador de Programas CNC, este programa está encargado de tomar el path generado por el parser de PS a estructura de datos vectoriales y generar el programa CNC que será cargado en la cortadora láser.
+
+El programa toma como entradas el path mediante la variable Path y el nombre del archivo de salida mediante la variable OutputFile.
+
+En la figura \ref{generador_cnc} se presenta un diagrama de flujo con el diseño del programa CNC, el programa toma cada Vector contenido en la variable Path y guarda el punto inicial en las variables $Y_0$ y $X_0$ además de guardar el punto final en las variables $Y_f$ y $X_f$. Luego llama a la subrutina XYInterpolation para generar los comandos de corte.
+
+Al finalizar, se crea un archivo con el nombre recibido por medio de la variable OutputFile y en ella se escriben el header y los comandos de corte.   
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.3\linewidth]{./Figuras/generador_cnc}
+        \caption{Parser de PDF a Estructura de Datos Vectoriales} 
+        \label{generador_cnc}
+\end{figure}
+
+La figura \ref{XYInterpolation} muestra un diagrama de flujo con el diseño la subrutina XYInterpolation, 
+está subrutina hace uso del  algoritmo de interpolación lineal descrito en \cite{RoboticsAge}. 
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.5\linewidth]{./Figuras/Interpolation}
+        \caption{Algoritmo de Interpolación Lineal XY.} 
+        \label{XYInterpolation}
+\end{figure}
+
+El algoritmo se puede resumir en los siguientes pasos los siguientes pasos:
+
+\begin{enumerate}
+        \item El primer paso es definir los puntos de programación inicial y el final.
+        \item Se calcula la dirección del eje X con la ecuación \ref{Eq:Delta X}. 
+        \item Se calcula la dirección del eje Y con la ecuación \ref{Eq:Delta Y}.
+        \item Si Dx es positivo el byte de signo para los movimientos en el eje X es 0x00 de caso contrario es 0x01. 
+        \item Si Dy es positivo el byte de signo para los movimientos en el eje Y es 0x00 de caso contrario es 0x02. 
+        \item Se utiliza la ecuación \ref{Eq:FXY} para calcular el valor de la variable FXY. 
+        \item Si el valor de FXY es negativo, se agrega un step en el eje Y. Y se agrega el valor de $|DX|$ a FXY.  
+        \item Si el valor de FXY es positivo, se agrega un step en el eje X. Y se agrega el valor de $|DY|$ a FXY.  
+        \item Este proceso se repite hasta que cabezal de la cortadora alcance la posición $[X_f,Y_f]$.
+\end{enumerate}
+
+A continuación se presentan las ecuaciones utilizadas por el algoritmo.
+
+\begin{equation}
+        \label{Eq:Delta X}      
+        Dx = X_f - X_0
+\end{equation}
+
+\begin{equation}
+        \label{Eq:Delta Y}      
+        Dy = Y_f - Y_0
+\end{equation}
+
+\begin{equation}
+        \label{Eq:FXY}  
+        FXY = |Dx| - |Dy|
+\end{equation}
+
+\subsubsection{Clase CncGenerator} 
+Para implementar el programa generador de archivos CNC se crearon 2 clases, la primera clase se denominó 
+CncGenerator, esta clase cuenta con 2 miembros: Path y OutputFile.
+Path es una variable que guarda el Path creado por el programa Parser mientras que OutputFile guarda un string con el nombre que se le desee dar al programa CNC generado.
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Clase CncGenerator.] 
+class CncGenerator(object):
+        def __init__(self, path, output_file, speed):
+        self._Path_ = path
+        self._OutputFile_ = output_file
+        \end{lstlisting}
+\end{minipage}
+
+El método principal de esta clase se llama Execute, el cual es el encargado de implementar el algoritmo de la figura \ref{generador_cnc}. Se utiliza la librería copy para generar una copia de los vectores que son extraídos de la variable path llamada CurrVector, debido a que python utiliza las variables por referencia. 
+
+Adicionalmente se utiliza el método ScaleVector con una escala de 0.0139, esto se debe a que los vectores generados por el programa parser utilizan el pixel como unidad de mediada y los gráficos cuentan con una resolución de 72 pixeles por pulgada (PPI) \citep{adobe2005pdf}. Mientras que la cortadora láser necesita de 1000 steps para realizar un corte de una pulgada. \citep{Alex}
+    
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Método Execute.] 
+def Execute(self):
+        for Vector in range(len(self._Path_)):
+                        # Make A Copy Of the Vector to be Executed
+            CurrVector = copy.deepcopy(self._Path_.pop())
+            
+                        # Convert it from PPI to inches.             
+            CurrVector.ScaleVector(1.0/72.0)
+            
+            # make the cut commands             
+            cut = CommandsGenerator(CurrVector)
+            commands = cut._XYInterpolation_() 
+                        
+                        print('Vector number {} executed').format(Vector + 1)
+     
+                # makes and stores the fullpacket in job using the libjob library
+        laser_bin = lj.jobPacket(commands)
+        laser_bin.makePacket()
+        job = laser_bin.getBin()
+        # the job is written to a file
+        with open(self._OutputFile_, 'a') as bin:
+            bin.write(job)
+        bin.close()
+            
+        \end{lstlisting}
+\end{minipage}
+
+\subsubsection{Clase CommandsGenerator}
+La clase CommandsGenerator implementa el algoritmo de la figura \ref{XYInterpolation}, cuenta con dos miembros Vector y commands. 
+
+Vector es una variable para guardar el vector recibido y commands es una variable tipo string  hexadecimal que guarda los comandos los comandos generados. 
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption=Clase CommandsGenerator.] 
+class CommandsGenerator(object):
+    def _ init_ (self, VectorCut):
+        self.CurrentVector = VectorCut
+        self.commands = ''
+        \end{lstlisting}
+\end{minipage}
+
+La clase cuenta con 3 métodos, get\_ power, cut\_ command y XYInterpolation.  
+El primer método llamado get\_ power utiliza la ecuación \ref{Eq:Power} para calcular el valor del byte de potencia de cada comando de corte.
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption= Método getpower.] 
+    def _ get_ power_ (self):
+        PD = self.CurrentVector.GetLaserPower()
+        P=int(PD*(255.0/100.0))
+        return chr(P)
+        \end{lstlisting}
+\end{minipage}
+
+El segundo método se llama cut\_ command y es el encargado de formar el comando de corte utilizando las variables Sign, StpX, StpY y la salida del método get\_ power. 
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption= Método cutcommand.] 
+    def _ cut_command_(self, Sign, Stp_X, Stp_Y):
+        self.commands += '{}{}{}{}'.format(Sign, Stp_ X, Stp_Y, self._ get_ power_())
+        \end{lstlisting}
+\end{minipage}
+
+Finalmente el método XYInterpolation implementa la subrutina del mismo nombre, el método utiliza la función de python chr para convertir números enteros en strings hexadecimales para formar los comandos del programa CNC.   
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption= Configuración de las variables utilizadas por el método XYInterpolation.]  
+    def _XYInterpolation_(self):
+        # current position is set to the starting position
+        X0 = self.Current_Vector.Get_Start()[0]
+        Y0 = self.Current_Vector.Get_Start()[1]
+        Xf = self.Current_Vector.Get_End()[0]
+        Yf = self.Current_Vector.Get_End()[1]
+        # current position is set to the starting position
+        X = X0
+        Y = Y0
+        # X Axis direction, if the value of DX is positive, the laser move to
+        # the rigth if the value is negative the laser move to the left.
+        DX = Xf - X0
+        SignX = chr(0)
+        SignY = chr(0)
+        if DX >= 0:
+            StepX = 1
+            SignX = chr(1)
+        else:
+            StepX = -1
+        # Y Axis direction, if the value of DY is positive, the laser move down
+        # if the value is negative the laser up.
+        DY = Yf - Y0
+        if DY >= 0:
+            StepY = 1
+        else:
+            StepY = -1
+            SignY = chr(2)
+        # Current function symbol, if FXY is greater than or equal to zero, the
+        # laser must move in the X axis, else the laser move in the Y axis
+        FXY = math.fabs(DX) - math.fabs(DY)
+        \end{lstlisting}
+\end{minipage}
+
+\begin{minipage}{\linewidth}    
+        \begin{lstlisting}[language=Python, caption= Lazo principal del método XYInterpolation.] 
+        # Main loop:
+        while not ((X == Xf) and (Y == Yf)):
+            if FXY >= 0:
+                X += StepX
+                FXY -= math.fabs(DY)
+                self._cut_command_(SignX, '\x01', '\x00')
+            else:
+                Y += StepY
+                FXY += math.fabs(DX)
+                self._cut_command_(SignY, '\x00', '\x01')
+        \end{lstlisting}
+\end{minipage}
+
+\section{Software de Cortado}
+El último programa desarrollado consiste en el software de cortado, este programa hace uso de los programas anteriores para producir el corte a partir del gráfico vectorial guardado en el archivo PDF.
+
+El programa toma cuatro parámetros por parte del usuario: La dirección del archivo PDF del que se desea extraer el gráfico vectorial, la dirección IP de la cortadora láser, el porcentaje de la potencia máxima que se desea utilizar para realizar el corte y el nombre del archivo de salida.
+En la figura \ref{Programa_Corte} se muestra un diagrama de flujo con el diseño del algoritmo del software de cortado.
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.5\linewidth]{./Figuras/Programa_Corte}
+        \caption{Software de Cortado} 
+        \label{Programa_Corte}
+\end{figure}
+
+
+El programa le envía la dirección del archivo pdf al extractor de datos mediante la variable file\_ Path, y recibe la salida de este por medio de una variable llamada DeflatedStream. 
+Luego le enviá al programa PDF parser la potencia del láser mediante la variable power, el script PS extraido mediante la variable DeflatedStream y recibe la salida de este mediante la variable Path.
+
+A continuación el programa de corte le envía al programa generador de CNC, las variables Path y OutputFile para producir el programa CNC.
+
+Finalmente el programa llama a una subrutina llamada Send que es la encargada de enviar el programa CNC a la 
+cortadora láser por medio del protocolo de comunicación descrito en la sección \ref{sec:L2.3.4}.  
+Para este programa se creó una GUI, el diseño se aprecia en la figura. En el apéndice \ref{apex1} se discute a profundidad el uso de la interfaz gráfica.  
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.5\linewidth]{./Figuras/GUI}
+        \caption{GUI del software de cortado.} 
+        \label{GUI}
+\end{figure}
+
+\chapter{Resultados} \label{sec:L04}
+Para probar el funcionamiento de los programas desarrollados se realizaron varios escenarios de prueba.
+
+El primer escenario fue la realización de diversos cortes en línea recta, el propósito de esta prueba fue comprobar el funcionamiento del algoritmo de interpolación lineal y del método lineto.
+
+En la figura \ref{Test5} se observan los distintos cortes realizados por la cortadora láser.
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.3\linewidth]{./Figuras/Test5}
+        \caption{Cortes realizados para la prueba 1.} 
+        \label{Test5}
+\end{figure}
+
+El segundo escenario de prueba fue la realización de un corte en curva, el propósito de esta prueba fue comprobar el funcionamiento del método Curveto. 
+
+En la figura \ref{Test_pdf_4} se tiene la imagen PDF generada para realizar la prueba, en la figura \ref{Test_figure_4} se muestra una representación gráfica de los vectores generados y en la figura \ref{Test4} se observa el corte realizado por la cortadora láser.
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.3\linewidth]{./Figuras/Test_pdf_4}
+        \caption{Imagen PDF utilizada para la prueba 2.} 
+        \label{Test_pdf_4}
+\end{figure}
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.5\linewidth]{./Figuras/Test_figure_4}
+        \caption{Vectores Generados para la prueba 2} 
+        \label{Test_figure_4}
+\end{figure}
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.3\linewidth]{./Figuras/Test4}
+        \caption{Corte Realizado en la prueba 2} 
+        \label{Test4}
+\end{figure}
+
+El tercer escenario de prueba fue la realización de un corte rectangular, en este caso la intención fue la de comprobar el funcionamiento del método Rectangule.    
+
+En la figura \ref{Test_pdf_3} se tiene la imagen PDF generada para realizar la prueba, en la figura \ref{Test_figure_3} se muestra una representación gráfica de los vectores generados y en la figura \ref{Test3} se observa el corte realizado por la cortadorá láser.
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.3\linewidth]{./Figuras/Test_pdf_3}
+        \caption{Imagen PDF utilizada para la prueba 3.} 
+        \label{Test_pdf_3}
+\end{figure}
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.5\linewidth]{./Figuras/Test_figure_3}
+        \caption{Vectores Generados para la prueba 3} 
+        \label{Test_figure_3}
+\end{figure}
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.3\linewidth]{./Figuras/Test3}
+        \caption{Corte Realizado en la prueba 3} 
+        \label{Test3}
+\end{figure}
+
+El cuarto escenario de prueba fue la realización de un corte que consiste en una espiral y un pentágono, el propósito de esta prueba fue comprobar el comportamiento de la cortadora al realizar varios curvetos de forma consecutiva.  
+
+En la figura \ref{Test_pdf} se tiene la imagen PDF generada para realizar la prueba, en la figura \ref{Test_figure_1} se muestra una representación gráfica de los vectores generados y en la figura \ref{Test} se observa el corte realizado por la cortadora láser.
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.3\linewidth]{./Figuras/Test_pdf}
+        \caption{Imagen PDF utilizada para la prueba 4.} 
+        \label{Test_pdf}
+\end{figure}
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.5\linewidth]{./Figuras/Test_figure_1}
+        \caption{Vectores Generados para la prueba 4.} 
+        \label{Test_figure_1}
+\end{figure}
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.3\linewidth]{./Figuras/Test}
+        \caption{Corte Realizado en la prueba 4.} 
+        \label{Test}
+\end{figure}
+
+El último escenario de prueba consistió en realizar el corte de un archivo layout, el propósito de esta prueba fue comprobar el comportamiento de la cortadora con archivo de complejidad real.
+
+En la figura \ref{Test_pdf_6} se tiene la imagen PDF generada para realizar la prueba, en la figura \ref{Test_figure_6} se muestra una representación gráfica de los vectores generados y en la figura \ref{Test6} se observa el corte realizado por la cortadora láser.
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.3\linewidth]{./Figuras/Test_pdf_6}
+        \caption{Imagen PDF utilizada para la prueba 5.} 
+        \label{Test_pdf_6}
+\end{figure}
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.5\linewidth]{./Figuras/Test_figure_6}
+        \caption{Vectores Generados para la prueba 5.} 
+        \label{Test_figure_6}
+\end{figure}
+
+\begin{figure}[!htb]
+        \includegraphics[width=0.3\linewidth]{./Figuras/Test6}
+        \caption{Corte Realizado en la prueba 5} 
+        \label{Test6}
+\end{figure}
+ 
+%-----------------------------
+\chapter{Conclusiones y recomendaciones} \label{sec:L05}
+\subsection{Conclusiones}
+
+\begin{enumerate}
+        \item Se logró documentar el protocolo de comunicación de la cortadora láser "Laser Spectrum H-Series 20x12 5th Gen " y se consiguió realizar una conexión entre la cortadora láser y una computadora con el sistema operativo GNU/Linux.
+        \item Se diseñó un software de cortado que permite tomar un archivo PDF y transformarlo en comandos de corte para la cortadora "Laser Spectrum H-Series 20x12 5th Gen ".
+        \item Se realizó implementación del software de cortado en el lenguaje de programación Python, además de realizar la implementación de todos los programas auxiliares necesarios para el funcionamiento del software diseñado.
+        \item El diseño propuesto consiste en diversos módulos independientes entre sí lo que permite que el cada módulo sea modificado por separado lo que facilita que sea modificado en el futuro.
+        \item Se realizaron diversas pruebas de funcionamiento lo que permitió comprobar el desempeño de los distintos algoritmos implementados.     
+\end{enumerate}
+
+\subsection{Recomendaciones }
+\begin{enumerate}
+        \item En la última prueba realizada, en la figura \ref{Test6} se observan algunos bugs al realizar el corte del archivo layout, el archivo layout fue producido utilizando un gráfico rasterizado que fue convertido a un gráfico vectorial por medio de la herramienta Inkscape. El análisis preliminar del script extraído con el programa PDF Extract sugiere que la cortadora pierde la referencia luego de realizar un comando h. Por lo que se recomienda ampliar la implementación de la subrutina closepath.     
+        \item Se realizó una cobertura funcional de los programas realizados, por lo que se recomienda desarrollar una metodología para realizar un análisis cuantitativo de los resultados obtenidos. Por ejemplo implementar un simulador de la cortadora láser para comparar la salida del simulador con los vectores producidos por el programa Parser y así calcular alguno de los índices de error.  
+
+\end{enumerate}
+
+%\subsection{Trabajo Futuro}
+%\begin{enumerate}
+%       \item 
+%       \item
+%       \item
+%\end{enumerate}
+
+%\subsection{Trabajo Futuro}
