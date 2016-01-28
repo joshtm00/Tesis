@@ -82,7 +82,7 @@ Las primeras máquinas herramientas que utilizaban el control numérico, necesitab
 
 Según \cite{cnc_Handbook}, alrededor del año de 1972, se introdujo en las empresas de manufactura el concepto de Control Numérico por Computador (CNC), en el CNC el operador es sustituido por un computador, por lo que no es necesario tener un operador frente al panel de control de la máquina herramienta, en un sistema CNC moderno el encargado de enviar las instrucciones a la máquina herramienta es un micro controlador.      
 
-Al conjunto de todas las instrucciones necesarias para crear una pieza especifica, se le conoce como programa CNC, este programa puede ser guardado y en un futuro ser utilizado para crear piezas reproducibles. \citep{cnc_Handbook} 
+Al conjunto de todas las instrucciones necesarias para crear una pieza especifica, se le conoce como programa CNC, este programa puede ser guardado para ser utilizado en un futuro en la reprodución de piezas. \citep{cnc_Handbook} 
 
 En la fabricación de un PCB se requiere primero realizar el diseño del circuito, luego utilizar un programa de diseño asistido por computador (CAD) para generar el archivo de layout. El archivo de layout contiene la información sobre los puntos de conexión de los dispositivos electrónicos, los disipadores de calor y las pistas que deben ser cortadas sobre el substrato.
 
@@ -132,20 +132,6 @@ En la figura \ref{Contorno} se muestra un corte realizado con un movimiento de c
         \label{Contorno}
 \end{figure}
 
-Según \cite{cnc_Basics}, el sistema cartesiano de coordenadas o sistema rectangular, fue creado por el filósofo y matemático francés Rene Descartes. Para los autores anteriormente citados, este sistema es útil para describir los movimientos punto a punto de las máquinas herramientas ya que estas se mueven en dos o tres ejes de movimiento (denominados alto, ancho y profundidad y generalmente representados por las letras X,Y,Z).
-
-El sistema de coordenadas cartesianas permite a la máquina localizar todos los puntos de la pieza de trabajo de forma precisa.
-
-La localización de todos los puntos en el sistema de coordenadas cartesianas se dan en referencia al punto en que todos los ejes se intersecan perpendicularmente entre sí, a este punto se le conoce como punto cero o punto de origen. \citep{cnc_Basics} 
-       
-En la figura \ref{puntoZero} se muestra la localización del punto cero para un sistema cartesiano de 2 ejes. 
-       
-\begin{figure}[!htb]
-        \includegraphics[width=0.7\linewidth]{./Figuras/puntoZero.png}
-        \caption{Punto cero en el sistema cartesiano de coordenadas. Tomado de \citep{cnc_Basics}} 
-        \label{puntoZero}
-\end{figure}       
-       
        
 \subsection{Sistemas De Programación}
 
@@ -199,7 +185,9 @@ En la figura \ref{Interpolacion Circular} se muestra un corte realizado por medi
 \subsection{Estructura Del Programa CNC }
 
 A continuación se discutirá la estructura que tienen los programas CNC utilizados por la cortadora láser así como los comandos con los que dispone el algoritmo de interpolación para realizar los cortes.
-De acuerdo a \cite{Alex}, el programa CNC está formado por dos partes: el Header y los comandos de corte.
+
+De acuerdo a \cite{Alex}, el programa CNC utilizado por la cortadora láser "Laser Spectrum H-Series 20x12 5th Gen " está formado por dos partes: el Header y los comandos de corte.
+
 El header representa información necesaria para la configuración de la cortadora, tiene un tamaño de 1024 bytes y cuenta con las siguientes partes \citep{Alex}
 
 \begin{enumerate}
@@ -214,7 +202,7 @@ El header representa información necesaria para la configuración de la cortadora
 En la figura \ref{Gstruct2} se observa la estructura de Gstruct2, los valores para estos bytes serán generados mediante la librería libre libjob desarrollada por \cite{Alex} por lo que el estudio se concentrará en los comandos de corte.  
 
 \begin{figure}[!htb]
-        \includegraphics[width=0.9\linewidth]{./Figuras/Gstruct2.png}
+        \includegraphics[width=150mm,height=50mm]{./Figuras/Gstruct2.png}
         \caption{Estructura de datos Gstruct2. Tomado de \citep{Alex}. } 
         \label{Gstruct2}
 \end{figure}
@@ -234,7 +222,8 @@ El byte de signo define el sentido de rotación de los motores de paso a paso y f
 Si el cabezal de la cortadora se mueve hacia la derecha, los movimientos se consideran movimientos positivos en el eje X, y si se mueve hacia atrás se consideran movimientos positivos en el eje Y. De forma análoga si el cabezal de la cortadora se mueve hacia la izquierda o hacia adelante los movimientos se consideran negativos en el eje X y el eje Y respectivamente.      
 
 Los siguientes dos bytes representan la cantidad de steps que deben moverse los motores de paso a paso, para realizar movimientos en el eje X, el segundo byte debe tomar un valor distinto de cero y el tercero un valor de cero. Para realizar movimientos en el eje Y el tercer byte debe tomar un valor distinto de cero y el segundo byte un valor de cero. Finalmente si ambos bytes toman un valor de cero se realizan movimientos simultáneos en ambos ejes.
-El último byte representa la potencia del láser que será utilizada para realizar el corte, si el valor del es de cero el cabezal de la cortadora realizará un movimiento pero el láser no se activará lo que permite realizar movimientos sin realizar cortes. \citep{Alex}
+
+El último byte representa la potencia del láser que será utilizada para realizar el corte, el cual varía entre cero y cien por ciento. Si el valor de la potencia es de cero por ciento, la cortadora moverá el cabezal siguiendo la trayectoria programada sin realizar ningún corte en el material. \citep{Alex}
 
 El valor del cuarto byte se calcula con la ecuación \ref{Eq:Power} redondeada al entero más próximo y representada en valor hexadecimal. 
 
@@ -351,7 +340,7 @@ Cada stream cuenta con una entrada que representa el tamaño del stream en bytes.
     \end{lstlisting}
 \end{minipage}
 
-\subsubsection{Flate-Deflate Compression Algorithm}
+\subsubsection{Algoritmo Flate-Deflate}
 
 El algoritmo de compresión Flate para \cite{adobe2005pdf} es utilizado cuando se requiere comprimir información que forma secuencias, como los archivos de texto. Este algoritmo realiza una compresión libre de pérdidas.
   
@@ -385,13 +374,21 @@ Sintaxis: $X_1$  $Y_1$ $ X_2$  $Y_2$  $X_3$  $Y_3$ c
 El operador curveto agrega una curva cubica de Bézier al camino, la curva inicia en el Current Point y termina en las coordenadas [$X_3$,$Y_3$]. La curva de Bézier utiliza los puntos [$X_1$,$Y_1$] y [$ X_2$,$Y_2$] como puntos de control. El nuevo Current Point es el punto [$X_3$,$Y_3$]. \citep{adobe2005pdf}
   
 \subsubsection{Curvas Cubicas De Bézier}
-Una curva de Bézier, \cite{adobe2005pdf},  es un modelo matemático utilizado para representar curvas que puedan ser escaladas indefinidamente.
+Una curva de Bézier, \cite{adobe2005pdf}, es un modelo matemático utilizado para representar curvas indefinidamente 
+escalables.
 
-Las curvas de Bézier son curvas paramétricas, que tienen la forma de un polinomio de Bernstein de grado N, una curva cúbica utiliza entonces, un polinomio de Bernstein de grado 3, en las ecuaciones \ref{Eq:Bezier1} y \ref{Eq:Bezier1} se muestra la parametrización para una curva cúbica de Bézier en las coordenadas XY.
+El modelo consiste en curvas paramétricas con la forma de un polinomio de Bernstein de grado N, una curva cúbica de Bézier utiliza entonces, un polinomio de Bernstein de grado 3. En las ecuaciones \ref{Eq:Bezier1} y \ref{Eq:Bezier2} se muestra la parametrización para una curva cúbica de Bézier en las coordenadas XY.
   
-Las curvas cubicas de Bézier utilizan cuatro puntos para controlar la forma de la curva, el punto inicial [$X_0$,$Y_0$] cuando el parámetro $t$ tiene un valor de $0.0$ la curva se localiza en este punto, el punto final [$X_3$,$Y_3$] cuando el parámetro $t$ tiene un valor de $1.0$ la curva se localiza en este punto, ademas de dos puntos adicionales de control [$X2$,$Y2$] y [$X3$,$Y3$] que no están contenidos en la curva.
+Las curvas cubicas de Bézier utilizan cuatro puntos para controlar la forma de la curva: 
 
-Para los valores del parámetro $t$ que se encuentran entre 0.0 y 1.0, se obtienen puntos localizados en la curva que se encuentran entre el punto inicial y el punto final. \citep{adobe2005pdf}
+\begin{enumerate}
+	\item El punto donde inicia la curva [$X_0$,$Y_0$]
+	\item Un primer punto de control [$X1$,$Y1$]
+	\item Un segundo punto de control [$X2$,$Y2$]
+	\item El punto donde finaliza la curva [$X_3$,$Y_3$]
+\end{enumerate}
+
+Para valores del parámetro $t$ en el intervalo [$0.0$,$1.0$], se obtienen puntos contenidos en la curva entre los puntos [$X_0$,$Y_0$] y [$X_3$,$Y_3$] utlizando las ecuaciones \ref{Eq:Bezier1} y \ref{Eq:Bezier2}.  \citep{adobe2005pdf}
 
 \begin{equation}
         \label{Eq:Bezier1}
@@ -410,6 +407,7 @@ El operador rectangle agrega un rectángulo al camino, la esquina inferior izquie
 \subsection{Closepath}
 Sintaxis: h
 El operador Closepath cierra el camino agregando una linea recta desde el "Current Point" hasta el punto inicial del primer segmento en el "Current Path". \cite{adobe2005pdf}
+
 %\section{Abstract Data structures}
 %Queue:
 %Stack:
@@ -1031,7 +1029,7 @@ El tercer escenario de prueba fue la realización de un corte rectangular, en est
 En la figura \ref{Test_pdf_3} se tiene la imagen PDF generada para realizar la prueba, en la figura \ref{Test_figure_3} se muestra una representación gráfica de los vectores generados y en la figura \ref{Test3} se observa el corte realizado por la cortadorá láser.
 
 \begin{figure}[!htb]
-        \includegraphics[width=0.3\linewidth]{./Figuras/Test_pdf_3}
+        \includegraphics[width=0.3\linewidth]{./Figuras/Test_PDF_3}
         \caption{Imagen PDF utilizada para la prueba 3.} 
         \label{Test_pdf_3}
 \end{figure}
@@ -1075,7 +1073,7 @@ El último escenario de prueba consistió en realizar el corte de un archivo layou
 En la figura \ref{Test_pdf_6} se tiene la imagen PDF generada para realizar la prueba, en la figura \ref{Test_figure_6} se muestra una representación gráfica de los vectores generados y en la figura \ref{Test6} se observa el corte realizado por la cortadora láser.
 
 \begin{figure}[!htb]
-        \includegraphics[width=0.3\linewidth]{./Figuras/Test_pdf_6}
+        \includegraphics[width=0.3\linewidth]{./Figuras/Test_PDF_6}
         \caption{Imagen PDF utilizada para la prueba 5.} 
         \label{Test_pdf_6}
 \end{figure}
